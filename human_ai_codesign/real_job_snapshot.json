@@ -1,0 +1,91 @@
+{
+  "snapshot_name": "Real Job Snapshot",
+  "schema_version": 1,
+  "description": "Local reproducible snapshot for genuine public job postings. Do not copy full postings; store structured fields, concise public-posting excerpts, source metadata, and genuine application URLs only.",
+  "fields": {
+    "job_id": "Stable local id, e.g. R001",
+    "title": "Public job title",
+    "company": "Hiring organization",
+    "location": "Posting location when explicitly stated, otherwise null",
+    "work_mode": "Remote, Hybrid, On-site, or null if not explicitly stated",
+    "min_experience": "Numeric years when explicitly stated, otherwise null",
+    "required_skills": "List of explicitly required skills from the posting excerpt",
+    "preferred_skills": "List of explicitly preferred skills from the posting excerpt",
+    "description": "Concise public-posting description/requirements excerpt, not the full posting",
+    "job_url": "Genuine public application/posting URL",
+    "source": "Source site or organization career page",
+    "date_retrieved": "YYYY-MM-DD date this snapshot record was collected"
+  },
+  "jobs": [
+    {
+      "job_id": "R001",
+      "title": "AI Solutions Data Analyst",
+      "company": "JE Dunn Construction",
+      "location": "Kansas City, MO",
+      "work_mode": null,
+      "min_experience": null,
+      "required_skills": [],
+      "preferred_skills": [],
+      "description": "Kansas City-based data analyst role focused on AI-enabled analytics and business data work.",
+      "job_url": "https://to.indeed.com/aas4xlkmbyr6",
+      "source": "Indeed",
+      "date_retrieved": "2026-09-11"
+    },
+    {
+      "job_id": "R002",
+      "title": "Data Scientist I",
+      "company": "Republic Services",
+      "location": "Phoenix, AZ",
+      "work_mode": null,
+      "min_experience": null,
+      "required_skills": [],
+      "preferred_skills": [],
+      "description": "Supports internal AI and analytics initiatives using foundational data science, statistical, programming, and machine learning skills to solve defined business problems.",
+      "job_url": "https://to.indeed.com/aa8gg88qtx7z",
+      "source": "Indeed",
+      "date_retrieved": "2026-09-11"
+    },
+    {
+      "job_id": "R003",
+      "title": "Business Intelligence Analyst",
+      "company": "Humana",
+      "location": "Remote",
+      "work_mode": "Remote",
+      "min_experience": null,
+      "required_skills": ["sql"],
+      "preferred_skills": [],
+      "description": "Supports business intelligence and data solutions using SQL, Databricks, and enterprise data platforms in a healthcare organization.",
+      "job_url": "https://to.indeed.com/aayzljbbhkp6",
+      "source": "Indeed",
+      "date_retrieved": "2026-09-11"
+    },
+    {
+      "job_id": "R004",
+      "title": "Data Quality Analyst (Translational Research)",
+      "company": "Digital Infuzion",
+      "location": "Remote",
+      "work_mode": "Remote",
+      "min_experience": null,
+      "required_skills": [],
+      "preferred_skills": ["healthcare", "bioinformatics", "data quality"],
+      "description": "Remote translational research data quality role supporting healthcare and bioinformatics data, research insights, and high-quality data operations.",
+      "job_url": "https://to.indeed.com/aabttxjpztbb",
+      "source": "Indeed",
+      "date_retrieved": "2026-09-11"
+    },
+    {
+      "job_id": "R005",
+      "title": "Healthcare Data Scientist",
+      "company": "Pharmaceutical Strategies Group LLC",
+      "location": "Remote",
+      "work_mode": "Remote",
+      "min_experience": null,
+      "required_skills": [],
+      "preferred_skills": ["healthcare", "data science", "analytics"],
+      "description": "Remote healthcare data science role focused on drug cost management, healthcare analytics, and data-driven client solutions.",
+      "job_url": "https://to.indeed.com/aa8mb8rl9btn",
+      "source": "Indeed",
+      "date_retrieved": "2026-09-11"
+    }
+  ]
+}

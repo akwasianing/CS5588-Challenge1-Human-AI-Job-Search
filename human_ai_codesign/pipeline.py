@@ -7,6 +7,7 @@ import json
 import re
 import time
 import os
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
@@ -66,6 +67,10 @@ MATCHING_WEIGHTS = {
     "salary_job_type": 0.05
 }
 
+EVALUATION_DATASET = "Evaluation Dataset"
+REAL_JOB_SNAPSHOT = "Real Job Snapshot"
+REAL_JOB_SNAPSHOT_PATH = Path(__file__).with_name("real_job_snapshot.json")
+
 FALLBACK_JOBS_DATA = [
     {"job_id":"J001","title":"Junior Data Scientist","company":"HealthAI Labs","location":"Kansas City, MO","work_mode":"Hybrid","min_experience":1,"required_skills":["python","sql","pandas","machine learning"],"preferred_skills":["healthcare","scikit-learn","git"],"description":"Build predictive models and analytics pipelines for healthcare data using Python, SQL, pandas, and machine learning. U.S. Citizenship or Work Authorization required."},
     {"job_id":"J002","title":"Data Analyst","company":"Metro Analytics","location":"Kansas City, MO","work_mode":"On-site","min_experience":1,"required_skills":["sql","excel","data visualization"],"preferred_skills":["python","tableau"],"description":"Analyze business data, create SQL reports, dashboards, and visualizations, and communicate findings to stakeholders."},
@@ -76,6 +81,21 @@ FALLBACK_JOBS_DATA = [
     {"job_id":"J007","title":"Data Engineering Associate","company":"CloudPipe","location":"Kansas City, MO","work_mode":"Hybrid","min_experience":2,"required_skills":["python","sql","etl"],"preferred_skills":["spark","aws","git"],"description":"Create ETL workflows, data quality checks, SQL transformations, and cloud-oriented data pipelines."},
     {"job_id":"J008","title":"NLP Research Assistant","company":"University AI Lab","location":"Kansas City, MO","work_mode":"On-site","min_experience":0,"required_skills":["python","machine learning"],"preferred_skills":["nlp","hugging face","research"],"description":"Support experiments in natural language processing, machine learning, Hugging Face models, and research evaluation."}
 ]
+
+def normalize_work_mode(value):
+    text = str(value).strip().lower()
+    if not text or text in {"nan", "none"}:
+        return None
+    if "remote" in text:
+        return "Remote"
+    if "hybrid" in text:
+        return "Hybrid"
+    if "on-site" in text or "onsite" in text or "on site" in text:
+        return "On-site"
+    return str(value).strip()
+
+def is_remote_or_hybrid_work_mode(value):
+    return normalize_work_mode(value) in {"Remote", "Hybrid"}
 
 def get_seniority(title):
     title = str(title).lower()
@@ -92,9 +112,24 @@ def get_seniority(title):
     else:
         return "Mid-level"
 
-def load_and_preprocess_dataset():
+def load_real_job_snapshot(path=None):
+    snapshot_path = Path(path) if path is not None else REAL_JOB_SNAPSHOT_PATH
+    if not snapshot_path.exists():
+        return []
+    with open(snapshot_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, dict):
+        return data.get("jobs", [])
+    if isinstance(data, list):
+        return data
+    return []
+
+def load_and_preprocess_dataset(data_source=EVALUATION_DATASET):
     df = None
-    if HAS_DATASETS:
+    is_real_snapshot = data_source == REAL_JOB_SNAPSHOT
+    if data_source == REAL_JOB_SNAPSHOT:
+        df = pd.DataFrame(load_real_job_snapshot())
+    elif HAS_DATASETS:
         try:
             dataset = load_dataset("keerthanshetty/r-datascientist-jobs")
             df = dataset["train"].to_pandas()
@@ -114,19 +149,50 @@ def load_and_preprocess_dataset():
             return [str(s).strip().lower() for s in val.split(",") if s.strip()]
         return []
 
+    if is_real_snapshot and not jobs.empty:
+        missing_required = []
+        for col in ["title", "company"]:
+            if col not in jobs.columns:
+                missing_required.append(col)
+        if missing_required:
+            raise ValueError(f"Real Job Snapshot records require fields: {missing_required}")
+        valid_required = jobs["title"].notna() & jobs["company"].notna()
+        valid_required &= jobs["title"].astype(str).str.strip().ne("")
+        valid_required &= jobs["company"].astype(str).str.strip().ne("")
+        jobs = jobs[valid_required].reset_index(drop=True)
+
     if "required_skills" in jobs.columns:
         jobs["required_skills_list"] = jobs["required_skills"].apply(clean_skills)
+    elif "skills" in jobs.columns:
+        jobs["required_skills_list"] = jobs["skills"].apply(clean_skills)
     else:
-        jobs["required_skills_list"] = jobs["skills"].apply(clean_skills) if "skills" in jobs.columns else []
+        jobs["required_skills_list"] = [[] for _ in range(len(jobs))]
 
     if "title" not in jobs.columns:
         jobs["title"] = "Data Scientist"
     if "company" not in jobs.columns:
         jobs["company"] = "Tech Corp"
     if "location" not in jobs.columns:
-        jobs["location"] = "Remote"
+        jobs["location"] = None if is_real_snapshot else "Remote"
     if "description" not in jobs.columns:
         jobs["description"] = jobs["title"]
+    if "work_mode" not in jobs.columns:
+        jobs["work_mode"] = None
+    if "min_experience" not in jobs.columns:
+        jobs["min_experience"] = None
+    if "preferred_skills" in jobs.columns:
+        jobs["preferred_skills_list"] = jobs["preferred_skills"].apply(clean_skills)
+    else:
+        jobs["preferred_skills_list"] = [[] for _ in range(len(jobs))]
+    for optional_col in ["job_url", "source", "date_retrieved"]:
+        if optional_col not in jobs.columns:
+            jobs[optional_col] = None
+
+    if jobs.empty:
+        jobs["seniority_level"] = []
+        jobs["skills_text"] = []
+        jobs["search_text"] = []
+        return jobs
 
     jobs["seniority_level"] = jobs["title"].apply(get_seniority)
     jobs["skills_text"] = jobs["required_skills_list"].apply(lambda x: " ".join(x))
@@ -257,29 +323,38 @@ def fallback_extract_job_requirements(row):
     req_skills = [{"text": s, "quote": s} for s in skills]
     pref_skills = []
     
+    desc_lower = desc.lower()
     edu_reqs = []
-    if any(k in desc.lower() for k in ["phd", "ph.d", "doctorate"]):
+    if re.search(r"(?<!\w)(phd|ph\.d\.?|doctorate)(?!\w)", desc_lower):
         edu_reqs.append({"text": "PhD in quantitative discipline", "quote": "PhD"})
-    elif any(k in desc.lower() for k in ["master", "ms", "m.s."]):
+    elif re.search(r"(?<!\w)(master|masters|master's|ms|m\.s\.?)(?!\w)", desc_lower):
         edu_reqs.append({"text": "Master's degree in quantitative discipline", "quote": "Master's degree"})
-    elif any(k in desc.lower() for k in ["bachelor", "bs", "b.s."]):
+    elif re.search(r"(?<!\w)(bachelor|bachelors|bachelor's|bs|b\.s\.?)(?!\w)", desc_lower):
         edu_reqs.append({"text": "Bachelor's degree in quantitative discipline", "quote": "Bachelor's degree"})
-    else:
-        edu_reqs.append({"text": "Degree in relevant quantitative field", "quote": "Degree"})
 
-    exp_match = re.search(r"(\d+)\+?\s*years?", desc, re.IGNORECASE)
-    exp_years = int(exp_match.group(1)) if exp_match else None
+    min_experience = row.get("min_experience", None)
+    exp_years = None
+    if pd.notna(min_experience):
+        try:
+            exp_years = int(float(min_experience))
+        except (TypeError, ValueError):
+            exp_years = None
+    if exp_years is None:
+        exp_match = re.search(r"(\d+)\+?\s*years?", desc, re.IGNORECASE)
+        exp_years = int(exp_match.group(1)) if exp_match else None
 
     elig_reqs = []
-    if any(k in desc.lower() for k in ["clearance", "public trust", "secret"]):
+    if any(k in desc_lower for k in ["clearance", "public trust", "secret"]):
         elig_reqs.append({"text": "Security clearance required", "quote": "clearance"})
-    if any(k in desc.lower() for k in ["citizen", "citizenship"]):
+    if any(k in desc_lower for k in ["citizen", "citizenship"]):
         elig_reqs.append({"text": "U.S. Citizenship required", "quote": "citizen"})
-    if any(k in desc.lower() for k in ["sponsorship", "visa"]):
+    if any(k in desc_lower for k in ["sponsorship", "visa"]):
         elig_reqs.append({"text": "Visa sponsorship information", "quote": "sponsorship"})
 
     loc = row.get("location", "Not specified")
-    work_arr = "Remote" if "remote" in desc.lower() else ("Hybrid" if "hybrid" in desc.lower() else "Onsite")
+    work_arr = normalize_work_mode(row.get("work_mode", None))
+    if work_arr is None:
+        work_arr = "Remote" if "remote" in desc_lower else ("Hybrid" if "hybrid" in desc_lower else "On-site")
     
     data = {
         "required_skills": req_skills,
@@ -373,19 +448,7 @@ class CoDesignScorer:
             y_score = 1.0 if cand_y >= req_y else cand_y / max(req_y, 1)
         else:
             y_score = np.nan
-        # Project/domain relevance score based on explicit keywords in job description
-        proj_keywords = ["healthcare", "clinical", "pyspark", "big data"]
-        proj_present = any(k in str(job_desc).lower() for k in proj_keywords)
-        proj_score = 1.0 if proj_present else np.nan
-        # Combine scores
-        if not np.isnan(y_score) and not np.isnan(proj_score):
-            return float(0.70 * y_score + 0.30 * proj_score)
-        elif not np.isnan(y_score):
-            return float(y_score)
-        elif not np.isnan(proj_score):
-            return float(proj_score)
-        else:
-            return np.nan
+        return float(y_score) if not np.isnan(y_score) else np.nan
 
     def score_role_alignment(self, job_title, seniority, preferred_roles):
         all_texts = [job_title] + preferred_roles
@@ -404,7 +467,7 @@ class CoDesignScorer:
         return float(np.clip(role_score, 0.0, 1.0))
 
     def score_location_work(self, extraction, candidate_locs, candidate_works):
-        work_arr = extraction.get("work_arrangement", "Remote")
+        work_arr = normalize_work_mode(extraction.get("work_arrangement", "Remote"))
         loc = extraction.get("location", "Remote")
         
         work_match = 1.0 if work_arr in candidate_works or "remote" in str(work_arr).lower() else 0.50
@@ -441,7 +504,7 @@ def validate_hard_eligibility(job_title, extraction):
     elif has_citizen_auth:
         return "Human review required"
     else:
-        return "No hard eligibility identified"
+        return "No hard eligibility requirement detected"
 
 def create_application_recommendation(row):
     score = row["match_percent"]
@@ -466,7 +529,7 @@ def create_application_recommendation(row):
         return "Low Priority"
 
 def apply_human_decision(ai_recommendation, human_decision):
-    if human_decision == "Accept AI":
+    if human_decision in ["Accept AI", "Accept Recommendation"]:
         return ai_recommendation
     elif human_decision == "Apply":
         return "Apply"
@@ -478,11 +541,24 @@ def apply_human_decision(ai_recommendation, human_decision):
         return "Needs Manual Review"
     return ai_recommendation
 
-def run_full_codesign_pipeline(candidate_profile=None, top_n=20):
+RESULT_COLUMNS = [
+    "candidate_id", "title", "company", "location", "work_mode", "min_experience",
+    "required_skills", "preferred_skills", "job_url", "source", "date_retrieved",
+    "hybrid_score", "bm25_score", "semantic_score", "final_match_score",
+    "match_percent", "match_tier", "evaluation_coverage_percent",
+    "evaluation_coverage", "skills_score", "experience_projects_score",
+    "education_score", "role_alignment_score", "location_work_score",
+    "salary_job_type_score", "unknown_factors", "eligibility_status",
+    "description", "matched_skills", "missing_skills", "recommendation"
+]
+
+def run_full_codesign_pipeline(candidate_profile=None, top_n=20, data_source=EVALUATION_DATASET):
     if candidate_profile is None:
         candidate_profile = DEFAULT_CANDIDATE_PROFILE
         
-    jobs_df = load_and_preprocess_dataset()
+    jobs_df = load_and_preprocess_dataset(data_source=data_source)
+    if jobs_df.empty:
+        return pd.DataFrame(columns=RESULT_COLUMNS)
     retriever = BM25HybridRetriever()
     top_candidates = retriever.retrieve(candidate_profile, jobs_df, top_n=top_n)
     scorer = CoDesignScorer(retriever.embedder)
@@ -552,6 +628,13 @@ def run_full_codesign_pipeline(candidate_profile=None, top_n=20):
             "title": row["title"],
             "company": row["company"],
             "location": row["location"],
+            "work_mode": row.get("work_mode", None),
+            "min_experience": row.get("min_experience", None),
+            "required_skills": row.get("required_skills_list", []),
+            "preferred_skills": row.get("preferred_skills_list", []),
+            "job_url": row.get("job_url", row.get("apply_url", row.get("application_url", None))),
+            "source": row.get("source", None),
+            "date_retrieved": row.get("date_retrieved", None),
             "hybrid_score": row["hybrid_score"],
             "bm25_score": row["bm25_score"],
             "semantic_score": row["semantic_score"],

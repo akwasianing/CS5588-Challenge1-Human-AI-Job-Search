@@ -9,7 +9,10 @@ import pandas as pd
 from human_ai_codesign.pipeline import (
     MATCHING_WEIGHTS,
     DEFAULT_CANDIDATE_PROFILE,
+    BM25HybridRetriever,
+    fallback_extract_job_requirements,
     get_seniority,
+    is_remote_or_hybrid_work_mode,
     validate_hard_eligibility,
     create_application_recommendation,
     apply_human_decision,
@@ -19,6 +22,7 @@ from human_ai_codesign.pipeline import (
 class TestPipelineMechanics(unittest.TestCase):
 
     def test_six_factor_weights_sum_to_one(self):
+        self.assertEqual(list(MATCHING_WEIGHTS.values()), [0.30, 0.25, 0.20, 0.10, 0.10, 0.05])
         total_weight = sum(MATCHING_WEIGHTS.values())
         self.assertAlmostEqual(total_weight, 1.00, places=4, msg="Matching base weights must sum to 1.00 (100%)")
         self.assertEqual(len(MATCHING_WEIGHTS), 6, msg="Pipeline must enforce exactly 6 co-designed factors")
@@ -64,7 +68,7 @@ class TestPipelineMechanics(unittest.TestCase):
         # 3. HIPAA / privacy requirement (Not hard eligibility)
         ext_hipaa = {"eligibility_requirements": [{"text": "Knowledge of HIPAA compliance", "quote": "HIPAA"}]}
         res3 = validate_hard_eligibility("Data Scientist", ext_hipaa)
-        self.assertEqual(res3, "No hard eligibility identified")
+        self.assertEqual(res3, "No hard eligibility requirement detected")
 
     def test_eligibility_outside_weighted_score(self):
         row_clearance = {
@@ -80,8 +84,9 @@ class TestPipelineMechanics(unittest.TestCase):
     def test_human_decision_overrides(self):
         ai_rec = "Apply"
         
-        # Test Accept AI
+        # Test accept recommendation labels
         self.assertEqual(apply_human_decision(ai_rec, "Accept AI"), "Apply")
+        self.assertEqual(apply_human_decision(ai_rec, "Accept Recommendation"), "Apply")
         # Test Human Reject
         self.assertEqual(apply_human_decision(ai_rec, "Reject / Skip"), "Excluded by Human")
         # Test Manual Review
@@ -93,6 +98,73 @@ class TestPipelineMechanics(unittest.TestCase):
         self.assertEqual(get_seniority("Junior Analyst"), "Entry/Junior")
         self.assertEqual(get_seniority("Data Science Intern"), "Intern")
         self.assertEqual(get_seniority("Data Scientist"), "Mid-level")
+
+    def test_explicit_work_mode_is_respected(self):
+        remote_row = pd.Series({
+            "description": "Analyze healthcare quality data.",
+            "required_skills_list": [],
+            "location": "Remote",
+            "work_mode": "Remote",
+            "min_experience": None,
+            "seniority_level": "Mid-level"
+        })
+        hybrid_row = pd.Series({
+            "description": "Analyze business data.",
+            "required_skills_list": [],
+            "location": "Kansas City, MO",
+            "work_mode": "Hybrid",
+            "min_experience": None,
+            "seniority_level": "Mid-level"
+        })
+
+        self.assertEqual(fallback_extract_job_requirements(remote_row)["work_arrangement"], "Remote")
+        self.assertEqual(fallback_extract_job_requirements(hybrid_row)["work_arrangement"], "Hybrid")
+
+    def test_min_experience_precedes_description_regex(self):
+        row = pd.Series({
+            "description": "This description mentions 7 years in passing.",
+            "required_skills_list": [],
+            "location": "Remote",
+            "work_mode": "Remote",
+            "min_experience": 2,
+            "seniority_level": "Mid-level"
+        })
+        extraction = fallback_extract_job_requirements(row)
+        self.assertEqual(extraction["experience_years"], 2)
+
+    def test_description_regex_used_when_min_experience_missing(self):
+        row = pd.Series({
+            "description": "Requires 4 years of analytics experience.",
+            "required_skills_list": [],
+            "location": "Remote",
+            "work_mode": None,
+            "min_experience": None,
+            "seniority_level": "Mid-level"
+        })
+        extraction = fallback_extract_job_requirements(row)
+        self.assertEqual(extraction["experience_years"], 4)
+
+    def test_no_education_requirement_stays_missing(self):
+        row = pd.Series({
+            "description": "Analyze data for business teams and production systems.",
+            "required_skills_list": [],
+            "location": "Remote",
+            "work_mode": "Remote",
+            "min_experience": None,
+            "seniority_level": "Mid-level"
+        })
+        extraction = fallback_extract_job_requirements(row)
+        self.assertEqual(extraction["education_requirements"], [])
+
+    def test_remote_hybrid_filter_predicate(self):
+        self.assertTrue(is_remote_or_hybrid_work_mode("Remote"))
+        self.assertTrue(is_remote_or_hybrid_work_mode("Hybrid"))
+        self.assertFalse(is_remote_or_hybrid_work_mode("On-site"))
+        self.assertFalse(is_remote_or_hybrid_work_mode("Onsite"))
+
+    def test_retrieval_formula_remains_50_50(self):
+        source_names = BM25HybridRetriever.retrieve.__code__.co_consts
+        self.assertIn(0.50, source_names)
 
 if __name__ == "__main__":
     unittest.main()

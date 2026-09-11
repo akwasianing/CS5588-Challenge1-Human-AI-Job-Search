@@ -21,9 +21,9 @@ def test_score_experience_no_requirements_no_keywords():
     assert np.isnan(result)
 
 def test_score_experience_no_years_with_keyword():
-    # No years requirement but project keyword present should score 1.0
+    # Job-domain keywords alone are not candidate project evidence.
     result = scorer.score_experience(None, None, {"data_analytics": 0}, "We need healthcare experience")
-    assert result == 1.0
+    assert np.isnan(result)
 
 def test_score_experience_years_only():
     # Years requirement provided, candidate meets it fully
@@ -31,10 +31,9 @@ def test_score_experience_years_only():
     assert result == 1.0
 
 def test_score_experience_years_and_keyword_combined():
-    # Both years and keyword present, combine with weights 0.7 and 0.3
+    # Years requirement is scored directly; job-domain keywords no longer add project credit.
     result = scorer.score_experience(4, None, {"data_analytics": 2}, "Experience with big data projects")
-    # y_score = 2/4 = 0.5, proj_score = 1.0 -> combined = 0.7*0.5 + 0.3*1.0 = 0.35 + 0.3 = 0.65
-    assert pytest.approx(result, 0.0001) == 0.65
+    assert pytest.approx(result, 0.0001) == 0.5
 
 def test_score_salary_job_type_none():
     # Neither salary nor job_type provided

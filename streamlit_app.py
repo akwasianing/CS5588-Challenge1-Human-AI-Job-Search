@@ -10,9 +10,24 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from human_ai_codesign.pipeline import (
     DEFAULT_CANDIDATE_PROFILE,
+    EVALUATION_DATASET,
     MATCHING_WEIGHTS,
+    REAL_JOB_SNAPSHOT,
     run_full_codesign_pipeline,
-    apply_human_decision
+    apply_human_decision,
+    is_remote_or_hybrid_work_mode
+)
+from human_ai_codesign.ui_helpers import (
+    ACCEPT_RECOMMENDATION,
+    APPLICATION_LINK_UNAVAILABLE,
+    build_match_evidence_rows,
+    coverage_aware_tier_label,
+    decision_key,
+    format_component_score,
+    get_human_decision,
+    job_url_or_none,
+    match_score_label,
+    persist_human_decisions
 )
 
 st.set_page_config(page_title="AI-Guided Job Search", page_icon="🔎", layout="wide")
@@ -81,29 +96,28 @@ st.sidebar.caption("Unknown factors are automatically excluded and active weight
 st.title("🔎 AI-Guided Job Search Application")
 st.caption("CS 5588 Challenge 1 • Validated Human–AI Co-Design Pipeline (Public Job Dataset)")
 
-t1, t2, t3, t4, t5 = st.tabs([
-    "1. Search & Co-Design Rank",
-    "2. 2-Stage Hybrid Engine",
-    "3. Feedback",
-    "4. Manual vs AI Experiment",
-    "5. Agentic AI + GitHub"
+t1, t2, t3 = st.tabs([
+    "1. Job Search & Matches",
+    "2. How Matches Are Calculated",
+    "3. Feedback"
 ])
 
 @st.cache_data(show_spinner="Loading public dataset and running 2-Stage Hybrid Pipeline...")
-def get_pipeline_data(profile):
-    return run_full_codesign_pipeline(profile, top_n=20)
+def get_pipeline_data(profile, job_source):
+    return run_full_codesign_pipeline(profile, top_n=20, data_source=job_source)
 
 with t1:
     st.subheader("Human–AI Co-Designed Job Search & Decision Engine")
+    job_source = st.selectbox("Job Source", [EVALUATION_DATASET, REAL_JOB_SNAPSHOT], index=0)
     
     with st.spinner("Executing 2-Stage Hybrid Search & 6-Factor Scoring Engine..."):
-        ranked_df = get_pipeline_data(candidate_profile)
+        ranked_df = get_pipeline_data(candidate_profile, job_source)
         
     c1, c2, c3 = st.columns([2,1,1])
     with c1:
         query = st.text_input("Filter by Title / Keywords", placeholder="e.g., Data Scientist, Healthcare, Analytics")
     with c2:
-        loc_filter = st.selectbox("Filter Location", ["All"] + sorted(list(set(ranked_df["location"].dropna()))))
+        loc_filter = st.selectbox("Job Location", ["All"] + sorted(list(set(ranked_df["location"].dropna()))))
     with c3:
         remote_only = st.checkbox("Remote / Hybrid Only", True)
         
@@ -112,35 +126,43 @@ with t1:
         filtered = filtered[filtered["title"].str.contains(query, case=False, na=False) | filtered["description"].str.contains(query, case=False, na=False)]
     if loc_filter != "All":
         filtered = filtered[filtered["location"] == loc_filter]
+    if remote_only and "work_mode" in filtered.columns:
+        filtered = filtered[filtered["work_mode"].apply(is_remote_or_hybrid_work_mode)]
         
     if filtered.empty:
         st.warning("No jobs match your current search filters.")
     else:
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Top Candidates Filtered", f"{len(filtered)} / {len(ranked_df)}")
-        m2.metric("Top Match %", f"{filtered.iloc[0]['match_percent']:.1f}%")
+        m2.metric("Top Match on Evaluated Factors", f"{filtered.iloc[0]['match_percent']:.1f}%")
         m3.metric("Evaluation Coverage", f"{filtered.iloc[0]['evaluation_coverage_percent']:.1f}%")
         m4.metric("Hard Eligibility Flags", int(sum(filtered["eligibility_status"] == "Hard eligibility requirement present")))
+        st.caption("Match Score reflects only the factors that could be evaluated from the available job information. Evaluation Coverage shows how much of the full 6-factor assessment had sufficient information.")
         
         st.markdown("### Top Match Scores")
         st.bar_chart(filtered.head(8).set_index("title")["match_percent"])
         
         st.markdown("### Top Job Recommendations & Human Review Decision Override")
-        st.info("Human-AI Co-Design Rule: AI Recommendation can be confirmed or overridden by the Human Reviewer below.")
+        st.info("Human-AI Co-Design Rule: System Recommendation can be confirmed or overridden by the Human Reviewer below.")
         
         # Prepare Interactive Decision Editor
-        display_cols = ["title", "company", "match_percent", "match_tier", "evaluation_coverage", "eligibility_status", "recommendation"]
+        display_cols = ["title", "company", "match_percent", "match_tier", "evaluation_coverage", "evaluation_coverage_percent", "eligibility_status", "recommendation"]
         editor_df = filtered.head(10)[display_cols].copy()
         editor_df.rename(columns={
             "match_percent": "Match %",
             "match_tier": "Tier",
             "evaluation_coverage": "Coverage",
             "eligibility_status": "Eligibility Audit",
-            "recommendation": "AI Recommendation"
+            "recommendation": "System Recommendation"
         }, inplace=True)
+        editor_df["Tier"] = editor_df.apply(
+            lambda row: coverage_aware_tier_label(row["Tier"], row["evaluation_coverage_percent"]),
+            axis=1
+        )
+        editor_df["_decision_key"] = editor_df.apply(lambda row: decision_key(row["title"], row["company"]), axis=1)
         
-        editor_df["Human Review Decision"] = editor_df["AI Recommendation"].apply(
-            lambda r: st.session_state.human_decisions.get(r, "Accept AI")
+        editor_df["Human Review Decision"] = editor_df["_decision_key"].apply(
+            lambda key: get_human_decision(st.session_state.human_decisions, key)
         )
         
         edited_table = st.data_editor(
@@ -149,26 +171,33 @@ with t1:
                 "Human Review Decision": st.column_config.SelectboxColumn(
                     "Human Review Decision",
                     help="Select human override decision",
-                    options=["Accept AI", "Apply", "Consider", "Reject / Skip", "Needs Manual Review"],
+                    options=[ACCEPT_RECOMMENDATION, "Apply", "Consider", "Reject / Skip", "Needs Manual Review"],
                     required=True
-                )
+                ),
+                "evaluation_coverage_percent": None,
+                "_decision_key": None
             },
             use_container_width=True,
             hide_index=True
         )
+
+        persist_human_decisions(st.session_state.human_decisions, edited_table.to_dict(orient="records"))
         
         # Compute Final Auditable Recommendation
         edited_table["Final Auditable Recommendation"] = edited_table.apply(
-            lambda row: apply_human_decision(row["AI Recommendation"], row["Human Review Decision"]), axis=1
+            lambda row: apply_human_decision(row["System Recommendation"], row["Human Review Decision"]), axis=1
         )
         
         st.markdown("#### Final Auditable Decision Summary")
-        st.dataframe(edited_table[["title", "Match %", "AI Recommendation", "Human Review Decision", "Final Auditable Recommendation"]], use_container_width=True, hide_index=True)
+        st.dataframe(edited_table[["title", "Match %", "System Recommendation", "Human Review Decision", "Final Auditable Recommendation"]], use_container_width=True, hide_index=True)
         
         st.markdown("### Detailed Explanations for Top Ranked Jobs")
         for idx, row in filtered.head(5).iterrows():
-            with st.expander(f"{row['title']} — {row['company']} • Match: {row['match_percent']:.1f}% ({row['match_tier']})"):
-                st.markdown(f"**Location / Work Mode**: {row['location']}")
+            detail_key = f"{row['title']} @ {row['company']}"
+            match_label = match_score_label(row["evaluation_coverage_percent"])
+            tier_label = coverage_aware_tier_label(row["match_tier"], row["evaluation_coverage_percent"])
+            with st.expander(f"{row['title']} — {row['company']} • {match_label}: {row['match_percent']:.1f}% ({tier_label})"):
+                st.markdown(f"**Location / Work Mode**: {row['location']} / {row.get('work_mode', 'Not specified')}")
                 st.markdown(f"**Evaluation Coverage**: {row['evaluation_coverage_percent']}% ({row['evaluation_coverage']})")
                 st.markdown(f"**Eligibility Status**: `{row['eligibility_status']}`")
                 
@@ -181,15 +210,56 @@ with t1:
                     st.write(", ".join(row["missing_skills"]) if row["missing_skills"] else "None")
                 with c:
                     st.markdown("**Component Sub-Scores**")
-                    st.write(f"- Skills: `{row['skills_score']*100:.1f}%`")
-                    st.write(f"- Experience: `{row['experience_projects_score']*100:.1f}%`")
-                    st.write(f"- Education: `{row['education_score']*100:.1f}%`")
-                    st.write(f"- Role Alignment: `{row['role_alignment_score']*100:.1f}%`")
-                    st.write(f"- Location/Work: `{row['location_work_score']*100:.1f}%`")
+                    st.write(f"- Skills: `{format_component_score(row['skills_score'])}`")
+                    st.write(f"- Experience: `{format_component_score(row['experience_projects_score'])}`")
+                    st.write(f"- Education: `{format_component_score(row['education_score'])}`")
+                    st.write(f"- Role Alignment: `{format_component_score(row['role_alignment_score'])}`")
+                    st.write(f"- Location/Work: `{format_component_score(row['location_work_score'])}`")
+                    st.write(f"- Salary/Job Type: `{format_component_score(row['salary_job_type_score'])}`")
+
+                st.markdown("**Evidence Used in This Match**")
+                st.dataframe(
+                    pd.DataFrame(build_match_evidence_rows(row, candidate_profile)),
+                    use_container_width=True,
+                    hide_index=True
+                )
                     
                 st.divider()
                 st.markdown("**Job Description Snippet:**")
                 st.caption(str(row["description"])[:500] + "...")
+                if st.button("View Job Details", key=f"details_{detail_key}"):
+                    st.session_state["selected_job_detail"] = detail_key
+                if st.session_state.get("selected_job_detail") == detail_key:
+                    st.write(f"**Title:** {row['title']}")
+                    st.write(f"**Company:** {row['company']}")
+                    st.write(f"**Location:** {row['location']}")
+                    st.write(f"**Work Mode:** {row.get('work_mode', 'Not specified')}")
+                    if row.get("source"):
+                        st.write(f"**Source:** {row.get('source')}")
+                    if row.get("date_retrieved"):
+                        st.write(f"**Date Retrieved:** {row.get('date_retrieved')}")
+                    st.write(f"**Minimum Experience:** {row.get('min_experience', 'Not specified')}")
+                    st.write("**Description:**")
+                    st.write(row["description"])
+                    st.write("**Required Skills:**")
+                    st.write(", ".join(row.get("required_skills", [])) if row.get("required_skills") else "Not specified")
+                    st.write("**Preferred Skills:**")
+                    st.write(", ".join(row.get("preferred_skills", [])) if row.get("preferred_skills") else "Not specified")
+                    st.write(f"**{match_label}:** {row['match_percent']:.1f}%")
+                    st.write(f"**Evaluation Coverage:** {row['evaluation_coverage_percent']}% ({row['evaluation_coverage']})")
+                    st.write(f"**Eligibility Status:** {row['eligibility_status']}")
+                    st.write("**Component Score Explanation:**")
+                    st.write(f"- Skills: `{format_component_score(row['skills_score'])}`")
+                    st.write(f"- Experience: `{format_component_score(row['experience_projects_score'])}`")
+                    st.write(f"- Education: `{format_component_score(row['education_score'])}`")
+                    st.write(f"- Role Alignment: `{format_component_score(row['role_alignment_score'])}`")
+                    st.write(f"- Location/Work: `{format_component_score(row['location_work_score'])}`")
+                    st.write(f"- Salary/Job Type: `{format_component_score(row['salary_job_type_score'])}`")
+                    job_url = job_url_or_none(row)
+                    if job_url:
+                        st.link_button("View Original Posting / Apply", job_url)
+                    else:
+                        st.info(APPLICATION_LINK_UNAVAILABLE)
 
 with t2:
     st.subheader("Stage 1: Hugging Face 2-Stage Hybrid Retrieval Engine")
@@ -217,37 +287,6 @@ with t3:
         fdf = pd.DataFrame(st.session_state.feedback)
         st.dataframe(fdf, use_container_width=True, hide_index=True)
         st.download_button("Download Feedback CSV", fdf.to_csv(index=False), "feedback_log.csv", "text/csv")
-
-with t4:
-    st.subheader("Manual vs. AI Experiment Matrix (CS 5588 Benchmark)")
-    st.markdown("Tracks historical progression from manual human design baseline to intermediate AI design, ending at the validated co-designed system.")
-    edited_comp = st.data_editor(st.session_state.comparison, use_container_width=True, hide_index=True, num_rows="fixed")
-    st.session_state.comparison = edited_comp
-    st.download_button("Download Comparison CSV", edited_comp.to_csv(index=False), "manual_vs_ai_comparison.csv", "text/csv")
-
-with t5:
-    st.subheader("Agentic AI + GitHub Traceability Workflow")
-    st.markdown("**GOAL → PLAN → TOOLS → OBSERVE → REVISE → VERIFY**")
-    prompt = '''We are building a teaching application for AI-guided job search.
-Before changing code, propose a short plan.
-
-Requirements:
-1. Keep every score in [0,1].
-2. Preserve separate evidence for skills, experience, education, role alignment, location, and salary.
-3. Validate hard eligibility outside weighted numerical match score.
-4. Do not invent candidate qualifications or job requirements.
-5. Provide auditable human decision override controls.
-'''
-    st.text_area("Agentic AI System Prompt", prompt, height=220)
-    st.markdown("#### GitHub Experiment Branches")
-    st.code('''git checkout -b human-baseline
-git commit -m "HUMAN: add transparent baseline matcher"
-
-git checkout -b ai-guided-matcher
-git commit -m "AI-GENERATED: propose improved matching logic"
-
-git checkout -b co-designed
-git commit -m "CO-DESIGNED: verify and correct matching logic"''', language="bash")
 
 st.divider()
 st.caption("CS 5588 Challenge 1 • Validated Teaching Prototype • Keep human review in the loop.")
