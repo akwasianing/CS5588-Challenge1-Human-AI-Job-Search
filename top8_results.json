@@ -1,0 +1,269 @@
+[
+  {
+    "candidate_id": 0,
+    "title": "Healthcare Data Analyst",
+    "company": "CareMetrics",
+    "location": "Remote",
+    "hybrid_score": 0.9083614349365234,
+    "bm25_score": 11.198655378642288,
+    "semantic_score": 0.6016361713409424,
+    "final_match_score": 0.9736842105263159,
+    "match_percent": 97.4,
+    "match_tier": "Strong match",
+    "evaluation_coverage_percent": 95.0,
+    "evaluation_coverage": "High",
+    "skills_score": 1.0,
+    "experience_projects_score": 1.0,
+    "education_score": 1.0,
+    "role_alignment_score": 1.0,
+    "location_work_score": 0.75,
+    "salary_job_type_score": null,
+    "unknown_factors": [
+      "salary_job_type"
+    ],
+    "eligibility_status": "No hard eligibility identified",
+    "description": "Analyze healthcare quality data with SQL and Python, prepare visual reports, and support clinical analytics teams.",
+    "matched_skills": [
+      "sql",
+      "python",
+      "data visualization"
+    ],
+    "missing_skills": [],
+    "recommendation": "Apply"
+  },
+  {
+    "candidate_id": 4,
+    "title": "Data Analyst",
+    "company": "Metro Analytics",
+    "location": "Kansas City, MO",
+    "hybrid_score": 0.6087693759883441,
+    "bm25_score": 8.422847129722545,
+    "semantic_score": 0.5117396116256714,
+    "final_match_score": 0.9642857142857144,
+    "match_percent": 96.4,
+    "match_tier": "Strong match",
+    "evaluation_coverage_percent": 70.0,
+    "evaluation_coverage": "Moderate",
+    "skills_score": 1.0,
+    "experience_projects_score": null,
+    "education_score": 1.0,
+    "role_alignment_score": 1.0,
+    "location_work_score": 0.75,
+    "salary_job_type_score": null,
+    "unknown_factors": [
+      "experience_projects",
+      "salary_job_type"
+    ],
+    "eligibility_status": "No hard eligibility identified",
+    "description": "Analyze business data, create SQL reports, dashboards, and visualizations, and communicate findings to stakeholders.",
+    "matched_skills": [
+      "sql",
+      "excel",
+      "data visualization"
+    ],
+    "missing_skills": [],
+    "recommendation": "Apply"
+  },
+  {
+    "candidate_id": 3,
+    "title": "Business Intelligence Analyst",
+    "company": "Civic Data Group",
+    "location": "Remote",
+    "hybrid_score": 0.6156631291068249,
+    "bm25_score": 8.885923276601167,
+    "semantic_score": 0.5042449235916138,
+    "final_match_score": 0.9296627725873675,
+    "match_percent": 93.0,
+    "match_tier": "Strong match",
+    "evaluation_coverage_percent": 70.0,
+    "evaluation_coverage": "Moderate",
+    "skills_score": 1.0,
+    "experience_projects_score": null,
+    "education_score": 1.0,
+    "role_alignment_score": 0.7576394081115723,
+    "location_work_score": 0.75,
+    "salary_job_type_score": null,
+    "unknown_factors": [
+      "experience_projects",
+      "salary_job_type"
+    ],
+    "eligibility_status": "No hard eligibility identified",
+    "description": "Build dashboards, semantic models, SQL transformations, and KPI reporting for distributed business teams.",
+    "matched_skills": [
+      "sql",
+      "power bi",
+      "data visualization"
+    ],
+    "missing_skills": [],
+    "recommendation": "Apply"
+  },
+  {
+    "candidate_id": 2,
+    "title": "Research Data Scientist",
+    "company": "BioDiscovery Institute",
+    "location": "St. Louis, MO",
+    "hybrid_score": 0.7029220577032957,
+    "bm25_score": 7.766440759518586,
+    "semantic_score": 0.5766141414642334,
+    "final_match_score": 0.8817979437964305,
+    "match_percent": 88.2,
+    "match_tier": "Strong match",
+    "evaluation_coverage_percent": 70.0,
+    "evaluation_coverage": "Moderate",
+    "skills_score": 0.9111767013867696,
+    "experience_projects_score": null,
+    "education_score": 1.0,
+    "role_alignment_score": 0.9390555024147034,
+    "location_work_score": 0.5,
+    "salary_job_type_score": null,
+    "unknown_factors": [
+      "experience_projects",
+      "salary_job_type"
+    ],
+    "eligibility_status": "No hard eligibility identified",
+    "description": "Apply statistical learning and AI methods to biomedical research datasets and collaborate with domain scientists.",
+    "matched_skills": [
+      "python",
+      "machine learning"
+    ],
+    "missing_skills": [
+      "statistics"
+    ],
+    "recommendation": "Apply"
+  },
+  {
+    "candidate_id": 1,
+    "title": "Junior Data Scientist",
+    "company": "HealthAI Labs",
+    "location": "Kansas City, MO",
+    "hybrid_score": 0.9047507393887777,
+    "bm25_score": 9.123083112705924,
+    "semantic_score": 0.6494734883308411,
+    "final_match_score": 0.8796701807724803,
+    "match_percent": 88.0,
+    "match_tier": "Strong match",
+    "evaluation_coverage_percent": 95.0,
+    "evaluation_coverage": "High",
+    "skills_score": 0.75,
+    "experience_projects_score": 1.0,
+    "education_score": 1.0,
+    "role_alignment_score": 0.856866717338562,
+    "location_work_score": 0.75,
+    "salary_job_type_score": null,
+    "unknown_factors": [
+      "salary_job_type"
+    ],
+    "eligibility_status": "Human review required",
+    "description": "Build predictive models and analytics pipelines for healthcare data using Python, SQL, pandas, and machine learning. U.S. Citizenship or Work Authorization required.",
+    "matched_skills": [
+      "python",
+      "sql",
+      "machine learning"
+    ],
+    "missing_skills": [
+      "pandas"
+    ],
+    "recommendation": "Consider - Check Eligibility"
+  },
+  {
+    "candidate_id": 6,
+    "title": "NLP Research Assistant",
+    "company": "University AI Lab",
+    "location": "Kansas City, MO",
+    "hybrid_score": 0.2495520783279671,
+    "bm25_score": 5.429275655768437,
+    "semantic_score": 0.3959341049194336,
+    "final_match_score": 0.8691638112068177,
+    "match_percent": 86.9,
+    "match_tier": "Strong match",
+    "evaluation_coverage_percent": 70.0,
+    "evaluation_coverage": "Moderate",
+    "skills_score": 1.0,
+    "experience_projects_score": null,
+    "education_score": 1.0,
+    "role_alignment_score": 0.3341466784477234,
+    "location_work_score": 0.75,
+    "salary_job_type_score": null,
+    "unknown_factors": [
+      "experience_projects",
+      "salary_job_type"
+    ],
+    "eligibility_status": "No hard eligibility identified",
+    "description": "Support experiments in natural language processing, machine learning, Hugging Face models, and research evaluation.",
+    "matched_skills": [
+      "python",
+      "machine learning"
+    ],
+    "missing_skills": [],
+    "recommendation": "Apply"
+  },
+  {
+    "candidate_id": 5,
+    "title": "Data Engineering Associate",
+    "company": "CloudPipe",
+    "location": "Kansas City, MO",
+    "hybrid_score": 0.32290367872171843,
+    "bm25_score": 4.679093881951475,
+    "semantic_score": 0.45219647884368896,
+    "final_match_score": 0.7758715067590986,
+    "match_percent": 77.6,
+    "match_tier": "Good match",
+    "evaluation_coverage_percent": 70.0,
+    "evaluation_coverage": "Moderate",
+    "skills_score": 0.6666666666666666,
+    "experience_projects_score": null,
+    "education_score": 1.0,
+    "role_alignment_score": 0.6811005473136902,
+    "location_work_score": 0.75,
+    "salary_job_type_score": null,
+    "unknown_factors": [
+      "experience_projects",
+      "salary_job_type"
+    ],
+    "eligibility_status": "No hard eligibility identified",
+    "description": "Create ETL workflows, data quality checks, SQL transformations, and cloud-oriented data pipelines.",
+    "matched_skills": [
+      "python",
+      "sql"
+    ],
+    "missing_skills": [
+      "etl"
+    ],
+    "recommendation": "Consider"
+  },
+  {
+    "candidate_id": 7,
+    "title": "Machine Learning Engineer",
+    "company": "VectorWorks AI",
+    "location": "Remote",
+    "hybrid_score": 0.0,
+    "bm25_score": 0.30317832917625376,
+    "semantic_score": 0.38846275210380554,
+    "final_match_score": 0.6939791015216282,
+    "match_percent": 69.4,
+    "match_tier": "Good match",
+    "evaluation_coverage_percent": 70.0,
+    "evaluation_coverage": "Moderate",
+    "skills_score": 0.5,
+    "experience_projects_score": null,
+    "education_score": 1.0,
+    "role_alignment_score": 0.6078537106513977,
+    "location_work_score": 0.75,
+    "salary_job_type_score": null,
+    "unknown_factors": [
+      "experience_projects",
+      "salary_job_type"
+    ],
+    "eligibility_status": "Hard eligibility requirement present",
+    "description": "Develop production machine learning systems, model training pipelines, APIs, containers, and cloud deployments. Active Secret Clearance required.",
+    "matched_skills": [
+      "python",
+      "machine learning"
+    ],
+    "missing_skills": [
+      "pytorch",
+      "docker"
+    ],
+    "recommendation": "Review Eligibility First"
+  }
+]
