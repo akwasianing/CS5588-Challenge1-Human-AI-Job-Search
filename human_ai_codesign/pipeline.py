@@ -69,7 +69,7 @@ MATCHING_WEIGHTS = {
 
 EVALUATION_DATASET = "Evaluation Dataset"
 REAL_JOB_SNAPSHOT = "Real Job Snapshot"
-REAL_JOB_SNAPSHOT_PATH = Path(__file__).with_name("real_job_snapshot.json")
+REAL_JOB_SNAPSHOT_PATH = Path(__file__).resolve().parent.parent / "data" / "real_job_snapshot.json"
 
 FALLBACK_JOBS_DATA = [
     {"job_id":"J001","title":"Junior Data Scientist","company":"HealthAI Labs","location":"Kansas City, MO","work_mode":"Hybrid","min_experience":1,"required_skills":["python","sql","pandas","machine learning"],"preferred_skills":["healthcare","scikit-learn","git"],"description":"Build predictive models and analytics pipelines for healthcare data using Python, SQL, pandas, and machine learning. U.S. Citizenship or Work Authorization required."},

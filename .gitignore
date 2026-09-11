@@ -1,0 +1,12 @@
+.venv/
+.venv312/
+__pycache__/
+*.py[cod]
+.DS_Store
+.pytest_cache/
+.cache/
+models/
+.streamlit/secrets.toml
+pipeline_output.json
+pipeline_full_output.json
+pytest_results.txt
