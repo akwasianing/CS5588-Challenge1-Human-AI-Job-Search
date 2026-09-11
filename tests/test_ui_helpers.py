@@ -5,6 +5,7 @@ from human_ai_codesign.ui_helpers import (
     ACCEPT_RECOMMENDATION,
     APPLICATION_LINK_UNAVAILABLE,
     build_match_evidence_rows,
+    build_stage2_example,
     coverage_aware_tier_label,
     decision_key,
     format_component_score,
@@ -66,6 +67,36 @@ def test_evidence_rows_use_existing_scores_without_recomputing():
     assert by_factor["Experience / Projects"]["Evidence Used"] == "Not enough information"
     assert by_factor["Experience / Projects"]["Score"] == "Not evaluated"
     assert by_factor["Salary / Job Type"]["Score"] == "Not evaluated"
+
+
+def test_stage2_example_excludes_unknown_factors_and_uses_existing_scores():
+    weights = {
+        "skills": 0.30,
+        "experience_projects": 0.25,
+        "education": 0.20,
+        "role_alignment": 0.10,
+        "location_work_arrangement": 0.10,
+        "salary_job_type": 0.05,
+    }
+    row = {
+        "skills_score": 1.0,
+        "experience_projects_score": 1.0,
+        "education_score": np.nan,
+        "role_alignment_score": 1.0,
+        "location_work_score": 1.0,
+        "salary_job_type_score": np.nan,
+    }
+
+    example = build_stage2_example(row, weights)
+
+    assert example["unknown_factors"] == ["education", "salary_job_type"]
+    assert np.isclose(example["available_weight"], 0.75)
+    assert np.isclose(example["coverage_percent"], 75.0)
+    assert np.isclose(example["weighted_sum"], 0.75)
+    assert np.isclose(example["final_score"], 1.0)
+    salary_row = [item for item in example["component_rows"] if item["Factor"] == "Salary / Job Type"][0]
+    assert salary_row["Score"] == "Not evaluated"
+    assert salary_row["Weighted Contribution"] == "Not evaluated"
 
 
 def test_accept_recommendation_matches_legacy_accept_ai():

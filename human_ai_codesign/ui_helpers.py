@@ -6,6 +6,15 @@ import pandas as pd
 ACCEPT_RECOMMENDATION = "Accept Recommendation"
 APPLICATION_LINK_UNAVAILABLE = "Application link unavailable in this evaluation dataset."
 
+FACTOR_DISPLAY = [
+    ("skills", "Skills", "skills_score"),
+    ("experience_projects", "Experience / Projects", "experience_projects_score"),
+    ("education", "Education", "education_score"),
+    ("role_alignment", "Role Alignment", "role_alignment_score"),
+    ("location_work_arrangement", "Location / Work Arrangement", "location_work_score"),
+    ("salary_job_type", "Salary / Job Type", "salary_job_type_score"),
+]
+
 
 def format_component_score(value):
     if pd.isna(value):
@@ -138,6 +147,41 @@ def build_match_evidence_rows(row, candidate_profile):
             "Score": format_component_score(row.get("salary_job_type_score")),
         },
     ]
+
+
+def build_stage2_example(row, weights):
+    component_rows = []
+    weighted_sum = 0.0
+    available_weight = 0.0
+    unknown_factors = []
+
+    for factor_key, label, score_col in FACTOR_DISPLAY:
+        score = row.get(score_col)
+        weight = weights[factor_key]
+        evaluated = not pd.isna(score)
+        contribution = float(score) * weight if evaluated else None
+        if evaluated:
+            weighted_sum += contribution
+            available_weight += weight
+        else:
+            unknown_factors.append(factor_key)
+
+        component_rows.append({
+            "Factor": label,
+            "Weight": f"{weight:.0%}",
+            "Score": format_component_score(score),
+            "Weighted Contribution": "Not evaluated" if contribution is None else f"{contribution:.3f}",
+        })
+
+    final_score = weighted_sum / available_weight if available_weight > 0 else None
+    return {
+        "component_rows": component_rows,
+        "unknown_factors": unknown_factors,
+        "available_weight": available_weight,
+        "coverage_percent": available_weight * 100,
+        "weighted_sum": weighted_sum,
+        "final_score": final_score,
+    }
 
 
 def decision_key(title, company):

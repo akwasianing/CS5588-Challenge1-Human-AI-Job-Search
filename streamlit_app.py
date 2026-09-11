@@ -21,6 +21,7 @@ from human_ai_codesign.ui_helpers import (
     ACCEPT_RECOMMENDATION,
     APPLICATION_LINK_UNAVAILABLE,
     build_match_evidence_rows,
+    build_stage2_example,
     coverage_aware_tier_label,
     decision_key,
     format_component_score,
@@ -262,7 +263,7 @@ with t1:
                         st.info(APPLICATION_LINK_UNAVAILABLE)
 
 with t2:
-    st.subheader("Stage 1: Hugging Face 2-Stage Hybrid Retrieval Engine")
+    st.subheader("Stage 1: Hybrid Job Retrieval — BM25 + Hugging Face Embeddings")
     st.markdown("Combines BM25 lexical search with `sentence-transformers/all-MiniLM-L6-v2` dense embeddings ($50\\% \\text{ BM25} + 50\\% \\text{ Semantic}$).")
     
     if 'ranked_df' in locals() and not ranked_df.empty:
@@ -271,6 +272,50 @@ with t2:
         hybrid_display["Semantic Similarity"] = (hybrid_display["semantic_score"] * 100).round(1).astype(str) + "%"
         hybrid_display["Hybrid Score"] = (hybrid_display["hybrid_score"] * 100).round(1).astype(str) + "%"
         st.dataframe(hybrid_display[["title", "company", "BM25 Raw", "Semantic Similarity", "Hybrid Score"]], use_container_width=True, hide_index=True)
+
+    st.subheader("Stage 2: Six-Factor Match Evaluation")
+    factor_weights = pd.DataFrame([
+        {"Factor": "Skills", "Weight": "30%"},
+        {"Factor": "Experience / Projects", "Weight": "25%"},
+        {"Factor": "Education", "Weight": "20%"},
+        {"Factor": "Role Alignment", "Weight": "10%"},
+        {"Factor": "Location / Work Arrangement", "Weight": "10%"},
+        {"Factor": "Salary / Job Type", "Weight": "5%"},
+    ])
+    st.dataframe(factor_weights, use_container_width=True, hide_index=True)
+    st.caption("Retrieved Job -> 6-Factor Evaluation -> Unknown Factors Excluded -> Active Weights Renormalized -> Match on Evaluated Factors -> Evaluation Coverage -> Eligibility Check -> System Recommendation")
+    st.markdown(
+        "A factor is scored only when sufficient information is available. Missing information stays unknown, not zero; "
+        "unknown factors are excluded from the weighted score and the remaining active weights are renormalized to 100%. "
+        "Evaluation Coverage shows how much of the full 6-factor assessment could actually be evaluated. Eligibility checks "
+        "can override the normal score-based recommendation, and the System Recommendation is available for human confirmation "
+        "or override in Tab 1."
+    )
+
+    example_df = get_pipeline_data(candidate_profile, EVALUATION_DATASET)
+    example_match = example_df[
+        (example_df["title"] == "Healthcare Data Analyst") &
+        (example_df["company"] == "CareMetrics")
+    ]
+    if not example_match.empty:
+        example_row = example_match.iloc[0]
+        example = build_stage2_example(example_row, MATCHING_WEIGHTS)
+        st.markdown("#### Worked Example: Healthcare Data Analyst - CareMetrics")
+        st.dataframe(pd.DataFrame(example["component_rows"]), use_container_width=True, hide_index=True)
+        st.write(
+            f"Unknown factors: `{', '.join(example['unknown_factors']) if example['unknown_factors'] else 'None'}`"
+        )
+        st.write(
+            f"Available weight / Evaluation Coverage: `{example['available_weight']:.2f}` / "
+            f"`{example_row['evaluation_coverage_percent']:.1f}%`"
+        )
+        st.write(f"Weighted sum: `{example['weighted_sum']:.3f}`")
+        st.write(
+            f"Renormalized final Match on Evaluated Factors: "
+            f"`{example['weighted_sum']:.3f} / {example['available_weight']:.2f} = {example_row['match_percent']:.1f}%`"
+        )
+        st.write(f"Eligibility status: `{example_row['eligibility_status']}`")
+        st.write(f"System Recommendation: `{example_row['recommendation']}`")
 
 with t3:
     st.subheader("Feedback & Refinement Logger")
