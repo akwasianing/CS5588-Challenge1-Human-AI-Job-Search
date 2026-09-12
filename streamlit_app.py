@@ -94,7 +94,7 @@ for factor, w in MATCHING_WEIGHTS.items():
 st.sidebar.caption("Unknown factors are automatically excluded and active weights renormalized to 100%.")
 
 # Header
-st.title("🔎 AI-Guided Job Search Application")
+st.title("🔎 Human–AI Co-Designed Job Search Application")
 st.caption("CS 5588 Challenge 1 • Validated Human–AI Co-Design Pipeline (Public Job Dataset)")
 
 t1, t2, t3 = st.tabs([
