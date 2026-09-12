@@ -2,6 +2,10 @@
 
 This repository contains the final Human-AI co-designed product for CS5588 Challenge 1. The project evolved through a Human Design -> AI Design -> Human-AI Co-Design -> Final Product workflow, ending in a validated Streamlit application for explainable job matching and human review.
 
+## Live Application
+
+Public Streamlit app: https://cs5588-app-job-search-application-ddfrakhzejurg8sb6wjq3c.streamlit.app
+
 ## Problem
 
 The application supports personalized job matching for a candidate seeking data, analytics, healthcare analytics, biomedical informatics, and related roles. The target user is a job seeker or reviewer who wants ranked job matches with transparent scoring, missing-information handling, eligibility review, and a human-in-the-loop final decision.
