@@ -37,12 +37,18 @@ CS5588-Challenge1-Human-AI-Job-Search/
 └── docs/
 ```
 
+### Notebooks
+
+- `CS5588_Challenge1_Job_Search_FINAL.ipynb` - main Challenge 1 notebook documenting the job-search system and its Human Design, AI Design, and Human-AI Co-Design development.
+- `Challenge1_Public_Job_Data.ipynb` - data-preparation notebook used to load, inspect, clean, and prepare the Hugging Face public job dataset for retrieval and matching.
+
 ## Datasets
 
-The application supports two job sources:
+The project uses three data sources for different purposes:
 
-- **Evaluation Dataset**: a controlled 8-job dataset used for reproducible scoring, testing, and audit.
-- **Real Job Snapshot**: 5 genuine public job records with application URLs, captured on 2026-09-11 and stored locally in `data/real_job_snapshot.json`.
+- **Hugging Face Public Job Dataset**: `keerthanshetty/resume-skill-extractor-dataset`, containing 3,050 job records. The data was cleaned and normalized, required skills were processed, and searchable job text was prepared for BM25 and SBERT retrieval. Dataset URL: `https://huggingface.co/datasets/keerthanshetty/resume-skill-extractor-dataset`.
+- **Evaluation Dataset**: controlled 8-job dataset used for reproducible testing of scoring, Evaluation Coverage, eligibility, and recommendation behavior.
+- **Real Job Snapshot**: 5 genuine public job postings captured on September 11, 2026, with application URLs preserved in `data/real_job_snapshot.json`.
 
 Missing information is preserved as unknown rather than invented. Unknown factors are not converted to zero scores.
 
